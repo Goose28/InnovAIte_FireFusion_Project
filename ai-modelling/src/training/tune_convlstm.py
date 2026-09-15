@@ -23,7 +23,6 @@ from .ts_convlstm_forecaster_train import (
     LABEL_CACHE,
     FEATURES,
     HORIZON,
-    INPUT_STEPS,
     DEVICE,
     GriddedTimeSeriesDataset,
     MaskedTverskyLoss,
@@ -89,9 +88,13 @@ def objective(trial, data):
     learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
     batch_size = trial.suggest_categorical("batch_size", [4, 8, 16, 32])
     tversky_alpha = trial.suggest_float("tversky_alpha", 0.1, 0.5)
+    input_steps = trial.suggest_int("input_steps", 10, 40, step=5)
 
-    train_ds = GriddedTimeSeriesDataset(data["train_input"], data["train_labels"], INPUT_STEPS, HORIZON)
-    val_ds = GriddedTimeSeriesDataset(data["val_input"], data["val_labels"], INPUT_STEPS, HORIZON)
+    train_ds = GriddedTimeSeriesDataset(data["train_input"], data["train_labels"], input_steps, HORIZON)
+    val_ds = GriddedTimeSeriesDataset(data["val_input"], data["val_labels"], input_steps, HORIZON)
+    if len(train_ds) == 0 or len(val_ds) == 0:
+        raise optuna.TrialPruned("Not enough timesteps for this input_steps value.")
+
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
 
