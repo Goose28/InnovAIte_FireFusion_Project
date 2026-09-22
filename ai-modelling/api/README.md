@@ -196,7 +196,8 @@ curl http://localhost:8000/predict/models
 ### Misinformation Detection
 
 #### `POST /predict/misinformation`
-Classify a single social media post for misinformation.
+Classify a single social media post across three tasks using the multi-task DeBERTa
+model: **misinformation**, **urgency**, and **humanitarian category**.
 
 **Request Body:**
 ```json
@@ -204,7 +205,7 @@ Classify a single social media post for misinformation.
   "id": "post-1",
   "author_name": "Alice",
   "platform": "twitter",
-  "content": "Vaccines contain microchips inserted via 5G networks",
+  "content": "The evacuation warning for our town has been cancelled.",
   "share_count": 12,
   "ts": null,
   "post_url": ""
@@ -215,6 +216,10 @@ Classify a single social media post for misinformation.
 - `model_id` (optional): Specific model to use (defaults to first misinformation model)
 
 **Response:**
+
+Each task head returns its predicted class, its confidence, and the full probability map,
+under `tasks`.
+
 ```json
 {
   "model_id": "misinfo-deberta",
@@ -222,25 +227,38 @@ Classify a single social media post for misinformation.
   "id": "post-1",
   "author_name": "Alice",
   "platform": "twitter",
-  "content": "Vaccines contain microchips...",
-  "label_id": 1,
-  "label": "misinformation",
-  "confidence": 0.92,
-  "probabilities": {
-    "non_misinformation": 0.08,
-    "misinformation": 0.92
+  "content": "The evacuation warning for our town has been cancelled.",
+  "share_count": 12,
+  "ts": null,
+  "post_url": "",
+  "tasks": {
+    "misinfo": {
+      "label_id": 1,
+      "label": "TRUE",
+      "confidence": 0.86,
+      "probabilities": { "FALSE": 0.14, "TRUE": 0.86 }
+    },
+    "urgency": {
+      "label_id": 2,
+      "label": "URGENT",
+      "confidence": 0.72,
+      "probabilities": { "NOT_USEFUL": 0.10, "NOT_URGENT": 0.18, "URGENT": 0.72 }
+    },
+    "humanitarian": {
+      "label_id": 3,
+      "label": "EVAC",
+      "confidence": 0.65,
+      "probabilities": { "HMN_DMG": 0.02, "MAT_DMG": 0.03, "WARN": 0.06, "EVAC": 0.65, "HMN_MISS": 0.03, "VOLUNTEER": 0.01, "REQUEST": 0.01, "NOT_HUM": 0.19 }
+    }
   },
-  "risk_score": 0.92,
-  "severity": "HIGH",
   "checkpoint": "/path/to/deberta"
 }
 ```
 
-**Severity Mapping:**
-- `risk_score < 0.6` → `LOW`
-- `0.6 ≤ risk_score < 0.75` → `MEDIUM`
-- `0.75 ≤ risk_score < 0.9` → `HIGH`
-- `risk_score ≥ 0.9` → `CRITICAL`
+**Task labels:**
+- `misinfo` — `TRUE` (the claim is truthful) / `FALSE` (misinformation)
+- `urgency` — `NOT_USEFUL` / `NOT_URGENT` / `URGENT`
+- `humanitarian` — `HMN_DMG`, `MAT_DMG`, `WARN`, `EVAC`, `HMN_MISS`, `VOLUNTEER`, `REQUEST`, `NOT_HUM`
 
 ---
 

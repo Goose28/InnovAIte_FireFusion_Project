@@ -84,54 +84,49 @@ def analyse_claim(
     except json.JSONDecodeError as exc:
         raise RuntimeError("The prediction API returned an invalid response.") from exc
 
-    required_fields = {
-        "label",
-        "confidence",
-        "probabilities",
-        "risk_score",
-        "severity",
-    }
-    missing_fields = required_fields.difference(result)
-
-    if missing_fields:
+    if "tasks" not in result:
         raise RuntimeError(
-            f"The API response is missing required fields: "
-            f"{', '.join(sorted(missing_fields))}"
+            "The API response is missing required fields: tasks"
         )
 
-    numeric_values = {
-        "confidence": result["confidence"],
-        "risk_score": result["risk_score"],
-    }
+    tasks = result["tasks"]
 
-    for field_name, value in numeric_values.items():
+    if not isinstance(tasks, dict) or not tasks:
+        raise RuntimeError("The API response did not include any task predictions.")
+
+    for task_name, task in tasks.items():
+        if not isinstance(task, dict):
+            raise RuntimeError(f"The task '{task_name}' has an invalid shape.")
+
         try:
-            valid = math.isfinite(float(value))
+            valid_confidence = math.isfinite(float(task.get("confidence")))
         except (TypeError, ValueError):
-            valid = False
+            valid_confidence = False
 
-        if not valid:
+        if not valid_confidence:
             raise RuntimeError(
-                f"The model returned an invalid {field_name}. "
+                f"The model returned an invalid confidence for '{task_name}'. "
                 "Please check the loaded checkpoint."
             )
 
-    probabilities = result["probabilities"]
+        probabilities = task.get("probabilities")
 
-    if not isinstance(probabilities, dict) or not probabilities:
-        raise RuntimeError("The model returned invalid class probabilities.")
-
-    for value in probabilities.values():
-        try:
-            valid = math.isfinite(float(value))
-        except (TypeError, ValueError):
-            valid = False
-
-        if not valid:
+        if not isinstance(probabilities, dict) or not probabilities:
             raise RuntimeError(
-                "The model returned invalid class probabilities. "
-                "Please check the loaded checkpoint."
+                f"The model returned invalid class probabilities for '{task_name}'."
             )
+
+        for value in probabilities.values():
+            try:
+                valid = math.isfinite(float(value))
+            except (TypeError, ValueError):
+                valid = False
+
+            if not valid:
+                raise RuntimeError(
+                    f"The model returned invalid class probabilities for '{task_name}'. "
+                    "Please check the loaded checkpoint."
+                )
 
     return result
 
@@ -141,36 +136,50 @@ def format_label(label: str) -> str:
     return label.replace("_", " ").strip().title()
 
 
+TASK_TITLES = {
+    "misinfo": "Misinformation",
+    "urgency": "Urgency",
+    "humanitarian": "Humanitarian category",
+}
+
+# The order tasks are shown in, misinfo first. Any task the API returns that is not
+# listed here is still displayed, after these.
+TASK_ORDER = ("misinfo", "urgency", "humanitarian")
+
+
+def ordered_task_names(tasks: dict[str, Any]) -> list[str]:
+    known = [name for name in TASK_ORDER if name in tasks]
+    extra = [name for name in tasks if name not in TASK_ORDER]
+    return known + extra
+
+
 def display_result(result: dict[str, Any]) -> None:
-    """Display the prediction returned by the API."""
-    label = format_label(str(result["label"]))
-    confidence = float(result["confidence"])
-    risk_score = float(result["risk_score"])
-    severity = str(result["severity"]).upper()
-    probabilities = result["probabilities"]
+    """Display the multi-task prediction returned by the API."""
+    tasks = result["tasks"]
+    task_names = ordered_task_names(tasks)
 
-    is_misinformation = str(result["label"]).lower() in {
-        "misinformation",
-        "true",
-    }
+    st.subheader("Predicted labels")
 
-    if is_misinformation:
-        st.error(f"Prediction: {label}")
-    else:
-        st.success(f"Prediction: {label}")
-
-    first, second, third = st.columns(3)
-    first.metric("Confidence", f"{confidence:.1%}")
-    second.metric("Risk score", f"{risk_score:.1%}")
-    third.metric("Severity", severity)
+    label_columns = st.columns(len(task_names))
+    for column, task_name in zip(label_columns, task_names):
+        task = tasks[task_name]
+        title = TASK_TITLES.get(task_name, format_label(task_name))
+        label = format_label(str(task["label"]))
+        confidence = float(task["confidence"])
+        column.metric(title, label, f"{confidence:.1%} confidence")
 
     st.subheader("Class probabilities")
 
-    for probability_label, probability in probabilities.items():
-        readable_label = format_label(str(probability_label))
-        probability_value = float(probability)
-        st.write(f"{readable_label}: {probability_value:.1%}")
-        st.progress(min(max(probability_value, 0.0), 1.0))
+    for task_name in task_names:
+        task = tasks[task_name]
+        title = TASK_TITLES.get(task_name, format_label(task_name))
+
+        st.markdown(f"**{title}**")
+        for probability_label, probability in task["probabilities"].items():
+            readable_label = format_label(str(probability_label))
+            probability_value = float(probability)
+            st.caption(f"{readable_label}: {probability_value:.1%}")
+            st.progress(min(max(probability_value, 0.0), 1.0))
 
     st.caption(
         "This result is produced by an AI model and should be verified against "
@@ -232,8 +241,8 @@ def main() -> None:
 
     with st.sidebar:
         st.subheader("Demo information")
-        st.write("Model: DeBERTa misinformation classifier")
-        st.write("Classes: Misinformation / Non-misinformation")
+        st.write("Model: DeBERTa multi-task classifier")
+        st.write("Tasks: Misinformation · Urgency · Humanitarian category")
         st.write("API server:")
         st.code("localhost:8080", language=None)
         st.write("Prediction endpoint:")
