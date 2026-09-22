@@ -62,14 +62,30 @@ def test_format_label_creates_readable_text() -> None:
 @patch("demo.misinformation_app.urlopen")
 def test_analyse_claim_returns_successful_api_response(mock_urlopen) -> None:
     api_response = {
-        "label": "misinformation",
-        "confidence": 0.86,
-        "probabilities": {
-            "non_misinformation": 0.14,
-            "misinformation": 0.86,
+        "tasks": {
+            "misinfo": {
+                "label_id": 1,
+                "label": "TRUE",
+                "confidence": 0.86,
+                "probabilities": {"FALSE": 0.14, "TRUE": 0.86},
+            },
+            "urgency": {
+                "label_id": 2,
+                "label": "URGENT",
+                "confidence": 0.72,
+                "probabilities": {
+                    "NOT_USEFUL": 0.10,
+                    "NOT_URGENT": 0.18,
+                    "URGENT": 0.72,
+                },
+            },
+            "humanitarian": {
+                "label_id": 3,
+                "label": "EVAC",
+                "confidence": 0.65,
+                "probabilities": {"EVAC": 0.65, "WARN": 0.35},
+            },
         },
-        "risk_score": 0.86,
-        "severity": "HIGH",
     }
 
     mock_response = MagicMock()
@@ -81,8 +97,9 @@ def test_analyse_claim_returns_successful_api_response(mock_urlopen) -> None:
     )
 
     assert result == api_response
-    assert result["label"] == "misinformation"
-    assert result["confidence"] == pytest.approx(0.86)
+    assert result["tasks"]["misinfo"]["label"] == "TRUE"
+    assert result["tasks"]["misinfo"]["confidence"] == pytest.approx(0.86)
+    assert set(result["tasks"]) == {"misinfo", "urgency", "humanitarian"}
     mock_urlopen.assert_called_once()
 
 
@@ -103,8 +120,8 @@ def test_analyse_claim_handles_unavailable_api(mock_urlopen) -> None:
 @patch("demo.misinformation_app.urlopen")
 def test_analyse_claim_rejects_incomplete_api_response(mock_urlopen) -> None:
     incomplete_response = {
-        "label": "misinformation",
-        "confidence": 0.75,
+        "model_id": "misinfo-deberta",
+        "id": "post-1",
     }
 
     mock_response = MagicMock()
@@ -120,17 +137,19 @@ def test_analyse_claim_rejects_incomplete_api_response(mock_urlopen) -> None:
         analyse_claim(
             "An unverified bushfire warning was shared online."
         )
+
+
 @patch("demo.misinformation_app.urlopen")
 def test_analyse_claim_rejects_null_model_output(mock_urlopen) -> None:
     invalid_response = {
-        "label": "non_misinformation",
-        "confidence": None,
-        "probabilities": {
-            "non_misinformation": None,
-            "misinformation": None,
+        "tasks": {
+            "misinfo": {
+                "label_id": 0,
+                "label": "FALSE",
+                "confidence": None,
+                "probabilities": {"FALSE": None, "TRUE": None},
+            },
         },
-        "risk_score": None,
-        "severity": "LOW",
     }
 
     mock_response = MagicMock()

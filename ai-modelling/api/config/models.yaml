@@ -7,6 +7,8 @@
 #
 # kind (loader dispatch):
 #   deberta_sequence_binary — HF sequence classification checkpoint (misinformation)
+#   deberta_multitask       — shared DeBERTa encoder with per-task heads (misinfo/urgency/humanitarian);
+#                             requires model.pt + tasks.json in the checkpoint dir
 #   placeholder             — reserved; skipped at load time
 
 defaults:
@@ -15,7 +17,7 @@ defaults:
 models:
   - id: misinfo-deberta
     domain: misinformation
-    kind: deberta_sequence_binary
+    kind: deberta_multitask
     enabled: true
     checkpoint: src/models/misinformation/checkpoints/deberta
 

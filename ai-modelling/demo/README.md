@@ -2,7 +2,7 @@
 
 This folder contains the Streamlit interface used to demonstrate FireFusion’s misinformation-detection workflow.
 
-The user enters a bushfire-related claim, and the interface sends it to the existing `/predict/misinformation` API. The returned result includes the predicted label, confidence, class probabilities, risk score and severity.
+The user enters a bushfire-related claim, and the interface sends it to the existing `/predict/misinformation` API. The multi-task model returns a prediction for each of three tasks — misinformation (`TRUE`/`FALSE`), urgency, and humanitarian category — each with its class, confidence and class probabilities.
 
 ## Run the demo
 
