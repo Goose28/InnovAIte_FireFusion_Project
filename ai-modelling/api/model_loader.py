@@ -23,6 +23,7 @@ if str(_AI_MODELLING_ROOT) not in sys.path:
 from src.models.misinformation.deberta import (
     DebertaMisinfoTrainConfig,
     load_classifier_from_checkpoint,
+    load_multitask_from_checkpoint,
 )
 
 
@@ -53,6 +54,24 @@ def _resolve_checkpoint(path_value: str | None) -> Path | None:
     if p.is_absolute():
         return p
     return (_AI_MODELLING_ROOT / p).resolve()
+
+
+def _load_deberta_multitask(model_id: str, domain: str, ckpt: Path) -> LoadedModel:
+    if not ckpt.is_dir():
+        raise FileNotFoundError(f"Checkpoint not found for '{model_id}': {ckpt}")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer, model, max_len = load_multitask_from_checkpoint(ckpt, device=device)
+    model.eval()
+    return LoadedModel(
+        model_id=model_id,
+        domain=domain,
+        kind="deberta_multitask",
+        tokenizer=tokenizer,
+        model=model,
+        device=device,
+        max_len=max_len,
+        checkpoint_path=ckpt,
+    )
 
 
 def _load_deberta_sequence_binary(model_id: str, domain: str, ckpt: Path) -> LoadedModel:
@@ -96,6 +115,12 @@ def _load_one(entry: dict[str, Any]) -> LoadedModel | None:
         if ckpt is None:
             raise ValueError(f"model '{model_id}': deberta_sequence_binary requires checkpoint")
         return _load_deberta_sequence_binary(model_id, domain, ckpt)
+
+    if kind == "deberta_multitask":
+        ckpt = _resolve_checkpoint(entry.get("checkpoint"))
+        if ckpt is None:
+            raise ValueError(f"model '{model_id}': deberta_multitask requires checkpoint")
+        return _load_deberta_multitask(model_id, domain, ckpt)
     
     if kind == "bushfire_forecaster":
         ckpt = _resolve_checkpoint(entry.get("checkpoint"))
@@ -169,19 +194,21 @@ def _load_bushfire_forecaster(model_id: str, domain: str, ckpt: Path, scaler_pat
     
     # Extract metadata from scaler or set defaults
     metadata = {}
-    if scaler_data and isinstance(scaler_data, dict):  # <-- Now safe
+    if scaler_data and isinstance(scaler_data, dict):
         metadata = {
-            "features": scaler_data.get("features", DEFAULT_FEATURE_NAMES),
-            "input_steps": scaler_data.get("input_steps", 60),
+            "weather_features": scaler_data.get("weather_features", DEFAULT_FEATURE_NAMES),
+            "input_steps": scaler_data.get("input_steps", 30),
             "horizon": scaler_data.get("horizon", 2),
             "grid_shape": scaler_data.get("grid_shape"),
+            "fire_threshold": scaler_data.get("fire_threshold", 0.5),
         }
     else:
         metadata = {
             "features": DEFAULT_FEATURE_NAMES,
-            "input_steps": 60,
+            "input_steps": 30,
             "horizon": 2,
             "grid_shape": None,
+            "fire_threshold": 0.5,
         }
     
     return LoadedModel(
