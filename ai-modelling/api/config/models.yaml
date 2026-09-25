@@ -1,0 +1,36 @@
+# Model registry for the ai-modelling API.
+# Paths are relative to the ai-modelling project root unless absolute.
+#
+# domain:
+#   misinformation — social post / claim classifiers
+#   bushfire       — fire-risk, forecasting, etc. (extend loader kinds when ready)
+#
+# kind (loader dispatch):
+#   deberta_sequence_binary — HF sequence classification checkpoint (misinformation)
+#   deberta_multitask       — shared DeBERTa encoder with per-task heads (misinfo/urgency/humanitarian);
+#                             requires model.pt + tasks.json in the checkpoint dir
+#   placeholder             — reserved; skipped at load time
+
+defaults:
+  enabled_by_default: true
+
+models:
+  - id: misinfo-deberta
+    domain: misinformation
+    kind: deberta_multitask
+    enabled: true
+    checkpoint: src/models/misinformation/checkpoints/deberta
+
+  - id: bushfire-forecaster-v1
+    domain: bushfire
+    kind: bushfire_forecaster
+    enabled: true
+    checkpoint: src/models/bushfire/checkpoints/convlstm_forecaster.pth
+    scaler_checkpoint: src/models/bushfire/checkpoints/convlstm_scaler.pkl
+
+  - id: bushfire-classifier-v1
+    domain: bushfire
+    kind: bushfire_classifier
+    enabled: true
+    checkpoint: src/models/bushfire/checkpoints/tcn_classifier.pth
+    scaler_checkpoint: null

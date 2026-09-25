@@ -1,0 +1,95 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-app: #f3f6fb;
+  --text-main: #071833;
+  --bg-topbar: #ffffff;
+  --border-topbar: #e1e8f3;
+  --bg-toggle: #f9fbff;
+  --border-toggle: #d9e2f1;
+  --text-toggle: #526178;
+  --text-toggle-hover: #111827;
+  --bg-toggle-hover: #eef3fc;
+  --bg-dashboard: #eef3f8;
+  --text-dashboard: #0b1b34;
+  --bg-panel: rgba(255, 255, 255, 0.65);
+  --border-panel: rgba(255, 255, 255, 0.8);
+  --shadow-panel: rgba(31, 38, 135, 0.06);
+}
+
+html[data-theme="dark"] {
+  --bg-app: #090f1d;
+  --text-main: #f8fafc;
+  --bg-topbar: rgba(30, 41, 59, 0.65);
+  --border-topbar: rgba(255, 255, 255, 0.1);
+  --bg-toggle: rgba(30, 41, 59, 0.8);
+  --border-toggle: rgba(255, 255, 255, 0.15);
+  --text-toggle: #94a3b8;
+  --text-toggle-hover: #ffffff;
+  --bg-toggle-hover: rgba(51, 65, 85, 0.8);
+  --bg-dashboard: #0f172a;
+  --text-dashboard: #f1f5f9;
+  --bg-panel: rgba(15, 23, 42, 0.65);
+  --border-panel: rgba(255, 255, 255, 0.08);
+  --shadow-panel: rgba(0, 0, 0, 0.4);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --bg-app: #090f1d;
+    --text-main: #f8fafc;
+    --bg-topbar: rgba(30, 41, 59, 0.65);
+    --border-topbar: rgba(255, 255, 255, 0.1);
+    --bg-toggle: rgba(30, 41, 59, 0.8);
+    --border-toggle: rgba(255, 255, 255, 0.15);
+    --text-toggle: #94a3b8;
+    --text-toggle-hover: #ffffff;
+    --bg-toggle-hover: rgba(51, 65, 85, 0.8);
+    --bg-dashboard: #0f172a;
+    --text-dashboard: #f1f5f9;
+    --bg-panel: rgba(15, 23, 42, 0.65);
+    --border-panel: rgba(255, 255, 255, 0.08);
+    --shadow-panel: rgba(0, 0, 0, 0.4);
+  }
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  background: var(--bg-app);
+  color: var(--text-main);
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c9d3e3;
+  border-radius: 20px;
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
